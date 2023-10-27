@@ -1,0 +1,32 @@
+#!/bin/bash
+sudo yum update -y
+sudo amazon-linux-extras install docker -y
+sudo service docker start
+sudo usermod -a -G docker ec2-user
+sudo chkconfig docker on
+sudo curl -L https://github.com/docker/compose/releases/download/1.22.0/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+sudo mkdir /wordpress-config
+cd /wordpress-config
+sudo mkdir efs
+sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-0930255a353754b99.efs.us-east-1.amazonaws.com:/ /wordpress-config/efs
+
+echo "version: '2.2'
+services:
+  wordpress:
+    image: wordpress
+    volumes:
+      - /wordpress-config/efs/website:/var/www/html
+    ports:
+      - "80:80"
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: wordpress-rds.cexp47lsdaww.us-east-1.rds.amazonaws.com
+      WORDPRESS_DB_USER: admin
+      WORDPRESS_DB_PASSWORD: Admin123
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_TABLE_CONFIG: wp_" | sudo tee /wordpress-config/docker-compose.yml
+
+docker-compose up -d
+
